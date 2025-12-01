@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omborxona – BEKDOORS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* Logo style */
+#logo {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #4f46e5;
+    text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
+}
+#madeBy {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    font-size: 0.75rem;
+    color: #6b7280; /* gray-500 */
+}
+</style>
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen">
+
+<div class="container mx-auto p-4">
+
+<!-- Logo -->
+<div class="text-center mb-6">
+    <div id="logo">BEKDOORS</div>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-indigo-100 p-4 rounded-lg shadow text-center">
+        <h3 class="text-lg font-semibold text-indigo-700">Jami mahsulot</h3>
+        <p id="totalItems" class="text-2xl font-bold text-indigo-800">0</p>
+    </div>
+    <div class="bg-green-100 p-4 rounded-lg shadow text-center">
+        <h3 class="text-lg font-semibold text-green-700">Umumiy qiymat</h3>
+        <p id="totalValue" class="text-2xl font-bold text-green-800">0 so‘m</p>
+    </div>
+</div>
+
+<!-- Add Product -->
+<div class="bg-white p-4 rounded-lg shadow mb-6">
+<h2 class="text-xl font-semibold mb-4 text-gray-800">Yangi mahsulot qo‘shish</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<input id="name" placeholder="Mahsulot nomi" class="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-400">
+<input id="qty" type="number" placeholder="Miqdori" class="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-400">
+<select id="unit" class="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-400">
+    <option>dona</option>
+    <option>pachka</option>
+    <option>kg</option>
+    <option>litr</option>
+    <option>metr</option>
+    <option>quti</option>
+</select>
+</div>
+<button class="w-full bg-indigo-600 text-white p-2 mt-3 rounded hover:bg-indigo-700 transition" onclick="addItem()">Qo‘shish</button>
+</div>
+
+<!-- Export Buttons -->
+<div class="flex gap-3 mb-6">
+<button class="bg-green-500 text-white p-2 rounded hover:bg-green-600 w-full" onclick="exportCSV()">📤 CSV</button>
+<button class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 w-full" onclick="exportPDF()">📄 PDF</button>
+</div>
+
+<!-- Product List -->
+<div id="list" class="space-y-3"></div>
+
+<!-- MADE OF ISLOMBEK -->
+<div id="madeBy">MADE OF ISLOMBEK</div>
+
+</div>
+
+<script>
+let items = [];
+if(localStorage.items) items = JSON.parse(localStorage.items);
+
+function render(){
+    const root = document.getElementById("list");
+    root.innerHTML="";
+    let totalQty=0;
+    let totalValue=0;
+
+    items.forEach(item=>{
+        totalQty+=item.qty;
+        totalValue+=item.qty*(item.price || 0);
+
+        const div = document.createElement("div");
+        div.className="bg-white p-3 rounded-lg shadow flex justify-between items-center";
+        div.innerHTML = `
+        <div>
+            <b class="text-gray-800">${item.name}</b><br>
+            <small>${item.qty} ${item.unit}</small>
+        </div>
+        <div class="flex gap-2 items-center">
+            <button class="px-3 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200" onclick="changeQty(${item.id},-1)">-</button>
+            <span class="w-8 text-center font-bold">${item.qty}</span>
+            <button class="px-3 py-1 rounded bg-green-100 text-green-600 hover:bg-green-200" onclick="changeQty(${item.id},1)">+</button>
+            <button class="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300" onclick="removeItem(${item.id})">🗑</button>
+        </div>
+        `;
+        root.appendChild(div);
+    });
+
+    document.getElementById("totalItems").innerText = totalQty;
+    document.getElementById("totalValue").innerText = totalValue + " so‘m";
+
+    localStorage.items = JSON.stringify(items);
+}
+
+// Add product
+function addItem(){
+    const name=document.getElementById("name").value.trim();
+    const qty=Number(document.getElementById("qty").value);
+    const unit=document.getElementById("unit").value;
+
+    if(!name) return alert("Nom kiriting!");
+    if(qty<=0) return alert("Miqdor noto‘g‘ri!");
+
+    const id = Date.now();
+    items.push({id,name,qty,unit});
+    document.getElementById("name").value="";
+    document.getElementById("qty").value="";
+    render();
+}
+
+// Remove product
+function removeItem(id){
+    items = items.filter(x => x.id !== id);
+    render();
+}
+
+// Change quantity
+function changeQty(id,diff){
+    const item = items.find(x=>x.id===id);
+    if(!item) return;
+    item.qty = Math.max(0, item.qty + diff);
+    render();
+}
+
+// Export CSV
+function exportCSV(){
+    let csv = "Nomi,Miqdori,Birligi\n";
+    items.forEach(i=>{csv += `${i.name},${i.qty},${i.unit}\n`;});
+    const a = document.createElement("a");
+    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+    a.download = "omborxona.csv";
+    a.click();
+}
+
+// Export PDF
+function exportPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y=10;
+    doc.setFontSize(14);
+    doc.text("Omborxona hisobot",10,y);
+    y+=10;
+    items.forEach(i=>{
+        doc.text(`${i.name} | ${i.qty} ${i.unit}`,10,y);
+        y+=10;
+    });
+    doc.save("omborxona.pdf");
+}
+
+render();
+</script>
+
+</body>
+</html>
